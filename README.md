@@ -14,7 +14,7 @@ PostgreSQL, Kafka, GCP/GKE).
 | [user-auth-service](user-auth-service/README.md) | scaffolded | OAuth2.0/JWT auth, RBAC, GCP Secret Manager key rotation |
 | [subscription-order-service](subscription-order-service/README.md) | scaffolded | Stripe billing/webhooks, subscription lifecycle, Kafka event publishing |
 | [ai-nutrition-engine-service](ai-nutrition-engine-service/README.md) | scaffolded | AI-driven recipe generation and macro/menu personalization from FHIR biomarkers |
-| logistics-dispatch-service | planned | Redis geospatial courier dispatch and delivery window optimization |
+| [logistics-dispatch-service](logistics-dispatch-service/README.md) | scaffolded | Redis geospatial courier dispatch and delivery window optimization |
 
 Each service is an independently deployable Spring Boot module following
 Hexagonal Architecture (domain / port / adapter) and owns its own datastore,

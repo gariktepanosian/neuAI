@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: logistics-dispatch-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: 8085
+
+nutrihealth:
+  dispatch:
+    search-radius-km: ${DISPATCH_SEARCH_RADIUS_KM:10}
+
+logging:
+  level:
+    com.nutrihealth.logistics: DEBUG
