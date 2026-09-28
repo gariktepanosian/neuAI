@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: subscription-order-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/subscription_db}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8082
+
+nutrihealth:
+  stripe:
+    # Dev/test placeholders ONLY. Real deployments source both from GCP Secret
+    # Manager: the API key from the Stripe dashboard, the webhook secret from
+    # the registered webhook endpoint (spec Phase 1, Step 1.4).
+    api-key: ${STRIPE_API_KEY:sk_test_placeholder}
+    webhook-signing-secret: ${STRIPE_WEBHOOK_SIGNING_SECRET:whsec_test_placeholder}
+
+logging:
+  level:
+    com.nutrihealth.subscription: DEBUG
