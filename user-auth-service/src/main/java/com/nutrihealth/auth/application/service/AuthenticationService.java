@@ -5,6 +5,7 @@ import com.nutrihealth.auth.domain.model.InvalidCredentialsException;
 import com.nutrihealth.auth.domain.model.Role;
 import com.nutrihealth.auth.domain.model.UserAccount;
 import com.nutrihealth.auth.domain.port.in.AuthenticationUseCase;
+import com.nutrihealth.auth.domain.port.out.BiometricTokenVerifierPort;
 import com.nutrihealth.auth.domain.port.out.PasswordHasherPort;
 import com.nutrihealth.auth.domain.port.out.TokenIssuerPort;
 import com.nutrihealth.auth.domain.port.out.UserAccountRepositoryPort;
@@ -17,13 +18,16 @@ public class AuthenticationService implements AuthenticationUseCase {
     private final UserAccountRepositoryPort repository;
     private final PasswordHasherPort passwordHasher;
     private final TokenIssuerPort tokenIssuer;
+    private final BiometricTokenVerifierPort biometricVerifier;
 
     public AuthenticationService(UserAccountRepositoryPort repository,
                                   PasswordHasherPort passwordHasher,
-                                  TokenIssuerPort tokenIssuer) {
+                                  TokenIssuerPort tokenIssuer,
+                                  BiometricTokenVerifierPort biometricVerifier) {
         this.repository = repository;
         this.passwordHasher = passwordHasher;
         this.tokenIssuer = tokenIssuer;
+        this.biometricVerifier = biometricVerifier;
     }
 
     @Override
@@ -44,6 +48,20 @@ public class AuthenticationService implements AuthenticationUseCase {
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!account.isActive() || !passwordHasher.matches(rawPassword, account.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        TokenIssuerPort.IssuedAccessToken issued = tokenIssuer.issueFor(account);
+        return new IssuedToken(issued.token(), issued.expiresAtEpochSeconds());
+    }
+
+    @Override
+    public IssuedToken biometricLogin(String userId, String biometricToken) {
+        // Delegates attestation verification to the port — throws
+        // BiometricVerificationException (mapped to 401) if invalid.
+        UserAccount account = biometricVerifier.verify(userId, biometricToken);
+
+        if (!account.isActive()) {
             throw new InvalidCredentialsException();
         }
 

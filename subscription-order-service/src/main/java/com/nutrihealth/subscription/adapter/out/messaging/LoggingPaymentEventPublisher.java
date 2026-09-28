@@ -4,15 +4,13 @@ import com.nutrihealth.subscription.domain.model.Subscription;
 import com.nutrihealth.subscription.domain.port.out.PaymentEventPublisherPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 /**
- * Placeholder outbound adapter. Logs instead of publishing to Kafka because
- * the Kafka cluster (spec Phase 1, Step 1.3) has not been provisioned yet.
- * Swap for a KafkaTemplate-backed adapter, keeping the same port, once the
- * cluster and topics (`SUBSCRIPTION_PAID`, `PAYMENT_FAILED`) exist.
+ * Fallback adapter used only in tests or when Kafka is unavailable.
+ * In production, {@link KafkaPaymentEventPublisher} is the active bean.
+ * This class is NOT annotated with {@code @Component} — it is wired up
+ * only in test configurations that want a no-op publisher.
  */
-@Component
 public class LoggingPaymentEventPublisher implements PaymentEventPublisherPort {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingPaymentEventPublisher.class);

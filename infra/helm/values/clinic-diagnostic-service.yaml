@@ -1,0 +1,18 @@
+nameOverride: clinic-diagnostic-service
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/clinic-diagnostic-service
+  tag: latest
+service:
+  port: 8083
+  targetPort: 8083
+containerPort: 8083
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 15
+serviceAccount:
+  gcpServiceAccountEmail: clinic-diagnostic-service-dev@REPLACE_PROJECT.iam.gserviceaccount.com
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  KAFKA_BOOTSTRAP_SERVERS: nutrihealth-kafka-kafka-bootstrap.kafka:9092
+  MONGODB_URI: mongodb://nutrihealth-mongo:27017/nutrition_db
+  MLLP_PORT: "2575"

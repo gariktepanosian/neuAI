@@ -3,30 +3,26 @@ package com.nutrihealth.auth.adapter.out.security;
 import com.nutrihealth.auth.domain.model.UserAccount;
 import com.nutrihealth.auth.domain.port.out.TokenIssuerPort;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Date;
-import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Issues signed JWT access tokens (HS256). The signing key is expected to be
- * rotated periodically via GCP Secret Manager in deployed environments
- * (injected through {@code nutrihealth.auth.jwt-signing-key}); this adapter
- * only knows how to use "the current key", not how to rotate it.
+ * Issues signed JWT access tokens (HS256). The signing key is obtained from
+ * {@link JwtSigningKeyRotationManager}, which refreshes it from GCP Secret Manager
+ * every hour — enabling zero-downtime key rotation without a service restart.
  */
 @Component
 public class JwtTokenIssuerAdapter implements TokenIssuerPort {
 
-    private final SecretKey signingKey;
+    private final JwtSigningKeyRotationManager keyManager;
     private final Duration tokenTtl;
 
-    public JwtTokenIssuerAdapter(@Value("${nutrihealth.auth.jwt-signing-key}") String base64Key,
+    public JwtTokenIssuerAdapter(JwtSigningKeyRotationManager keyManager,
                                   @Value("${nutrihealth.auth.jwt-ttl-minutes:60}") long ttlMinutes) {
-        this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(base64Key));
+        this.keyManager = keyManager;
         this.tokenTtl = Duration.ofMinutes(ttlMinutes);
     }
 
@@ -41,7 +37,7 @@ public class JwtTokenIssuerAdapter implements TokenIssuerPort {
                 .claim("role", account.getRole().name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
-                .signWith(signingKey)
+                .signWith(keyManager.currentKey())
                 .compact();
 
         return new IssuedAccessToken(token, expiresAt.getEpochSecond());

@@ -1,0 +1,24 @@
+# Per-service Helm values overrides.
+# Deploy with:
+#   helm upgrade --install user-auth-service infra/helm/nutrihealth-service \
+#     -f infra/helm/values/user-auth-service.yaml --namespace nutrihealth
+---
+# user-auth-service.yaml
+nameOverride: user-auth-service
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/user-auth-service
+  tag: latest
+service:
+  port: 8082
+  targetPort: 8082
+containerPort: 8082
+autoscaling:
+  minReplicas: 3   # auth is critical — keep 3 minimum
+  maxReplicas: 30
+serviceAccount:
+  gcpServiceAccountEmail: user-auth-service-dev@REPLACE_PROJECT.iam.gserviceaccount.com
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  KAFKA_BOOTSTRAP_SERVERS: nutrihealth-kafka-kafka-bootstrap.kafka:9092
+  GCP_PROJECT_ID: REPLACE_PROJECT
+  nutrihealth.environment: dev

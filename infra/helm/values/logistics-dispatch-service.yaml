@@ -1,0 +1,16 @@
+nameOverride: logistics-dispatch-service
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/logistics-dispatch-service
+  tag: latest
+service:
+  port: 8085
+  targetPort: 8085
+containerPort: 8085
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 20
+serviceAccount:
+  gcpServiceAccountEmail: logistics-dispatch-service-dev@REPLACE_PROJECT.iam.gserviceaccount.com
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  DISPATCH_SEARCH_RADIUS_KM: "15"

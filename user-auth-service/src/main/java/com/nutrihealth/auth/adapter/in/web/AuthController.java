@@ -33,6 +33,17 @@ public class AuthController {
         return authenticationUseCase.login(request.email(), request.password());
     }
 
+    /**
+     * Biometric login endpoint — called by the mobile app after the user passes
+     * local biometric authentication (fingerprint / face).  The app sends a
+     * short-lived hardware-signed JWT ({@code biometricToken}) along with the
+     * userId it received at initial registration.
+     */
+    @PostMapping("/login/biometric")
+    public AuthenticationUseCase.IssuedToken biometricLogin(@Valid @RequestBody BiometricLoginRequest request) {
+        return authenticationUseCase.biometricLogin(request.userId(), request.biometricToken());
+    }
+
     public record RegisterRequest(
             @Email @NotBlank String email,
             @Size(min = 8, max = 128) @NotBlank String password) {
@@ -41,5 +52,10 @@ public class AuthController {
     public record LoginRequest(
             @Email @NotBlank String email,
             @NotBlank String password) {
+    }
+
+    public record BiometricLoginRequest(
+            @NotBlank String userId,
+            @NotBlank String biometricToken) {
     }
 }

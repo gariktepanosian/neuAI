@@ -1,0 +1,18 @@
+apiVersion: v2
+name: nutrihealth-service
+description: |
+  Generic Helm chart for all NutriHealth AI microservices.
+  Each service is deployed as a separate Helm release with its own values.yaml
+  override. The chart provides: Deployment, Service, HorizontalPodAutoscaler,
+  ServiceAccount (with Workload Identity annotation), ConfigMap, and optional
+  canary support via a second Deployment with a traffic weight annotation.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - nutrihealth
+  - microservice
+  - springboot
+home: https://github.com/nutrihealth/nutrihealth-ai
+maintainers:
+  - name: NutriHealth Platform Team

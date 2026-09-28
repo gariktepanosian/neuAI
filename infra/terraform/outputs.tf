@@ -18,3 +18,11 @@ output "redis_host" {
 output "microservice_service_accounts" {
   value = { for name, sa in google_service_account.microservice : name => sa.email }
 }
+
+output "vpc_network_name" {
+  value = google_compute_network.vpc.name
+}
+
+output "gke_subnetwork_name" {
+  value = google_compute_subnetwork.gke.name
+}

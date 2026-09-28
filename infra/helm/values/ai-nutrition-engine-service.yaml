@@ -1,0 +1,19 @@
+nameOverride: ai-nutrition-engine-service
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/ai-nutrition-engine-service
+  tag: latest
+service:
+  port: 8084
+  targetPort: 8084
+containerPort: 8084
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 20
+  # Nutrition engine is CPU-intensive due to Gemini calls — scale at 60% CPU
+  targetCPUUtilizationPercentage: 60
+serviceAccount:
+  gcpServiceAccountEmail: ai-nutrition-engine-service-dev@REPLACE_PROJECT.iam.gserviceaccount.com
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  MONGODB_URI: mongodb://nutrihealth-mongo:27017/nutrition_db
+  GEMINI_MODEL: gemini-1.5-pro

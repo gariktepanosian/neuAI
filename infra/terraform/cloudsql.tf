@@ -16,20 +16,28 @@ resource "google_sql_database_instance" "postgres" {
     }
 
     ip_configuration {
-      ipv4_enabled = false
-      # private_network intentionally left unset here — wire to a VPC via
-      # google_compute_network/google_service_networking_connection once the
-      # networking module for this environment is decided.
+      ipv4_enabled    = false
+      private_network = google_compute_network.vpc.id
+      ssl_mode        = "ENCRYPTED_ONLY"
     }
   }
 
   deletion_protection = true
 
-  depends_on = [google_project_service.required]
+  depends_on = [
+    google_project_service.required,
+    google_service_networking_connection.private_vpc_connection,
+  ]
 }
 
 resource "google_sql_database" "subscription_db" {
   name     = "subscription_db"
+  project  = var.project_id
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_database" "user_db" {
+  name     = "user_db"
   project  = var.project_id
   instance = google_sql_database_instance.postgres.name
 }

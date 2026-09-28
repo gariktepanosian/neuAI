@@ -4,15 +4,32 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/nutrition_db}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
 
 server:
   port: 8083
+
+# MLLP HL7 v2 TCP server port (IANA-assigned for HL7). Override in production
+# if 2575 is in use or if you need a non-default port.
+MLLP_PORT: ${MLLP_PORT:2575}
 
 nutrihealth:
   phi:
     # 32-byte AES-256 key, base64-encoded. Local/dev default ONLY — real
     # deployments must inject this from GCP Secret Manager / Cloud KMS.
     encryption-key: ${PHI_ENCRYPTION_KEY:dOnRCr+CsfStxHSxFJuBup7jPVD567X1VQG2k/qW10Q=}
+  kafka:
+    topic:
+      report-ingested: ${KAFKA_TOPIC_REPORT_INGESTED:diagnostic.report.ingested}
 
 logging:
   level:

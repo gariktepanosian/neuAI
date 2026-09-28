@@ -1,18 +1,15 @@
 package com.nutrihealth.auth.adapter.in.web.security;
 
+import com.nutrihealth.auth.adapter.out.security.JwtSigningKeyRotationManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Base64;
 import java.util.List;
-import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,16 +18,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Validates the {@code Authorization: Bearer <jwt>} header on incoming
- * requests and populates the Spring Security context with the caller's role,
- * so downstream RBAC checks (e.g. {@code @PreAuthorize}) can rely on it.
+ * requests and populates the Spring Security context with the caller's role.
+ *
+ * <p>The signing key is obtained from {@link JwtSigningKeyRotationManager} on
+ * every call, so key rotations (hourly, via GCP Secret Manager) are transparent
+ * to in-flight requests — new tokens are issued with the new key while old tokens
+ * remain valid until their {@code exp} claim expires.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final SecretKey signingKey;
+    private final JwtSigningKeyRotationManager keyManager;
 
-    public JwtAuthenticationFilter(@Value("${nutrihealth.auth.jwt-signing-key}") String base64Key) {
-        this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(base64Key));
+    public JwtAuthenticationFilter(JwtSigningKeyRotationManager keyManager) {
+        this.keyManager = keyManager;
     }
 
     @Override
@@ -40,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 Claims claims = Jwts.parser()
-                        .verifyWith(signingKey)
+                        .verifyWith(keyManager.currentKey())
                         .build()
                         .parseSignedClaims(header.substring(7))
                         .getPayload();

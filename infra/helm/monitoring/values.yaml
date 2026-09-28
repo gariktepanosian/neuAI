@@ -1,0 +1,177 @@
+# Prometheus + Grafana monitoring stack for NutriHealth AI
+#
+# Deploy with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+#     -f infra/helm/monitoring/values.yaml \
+#     --namespace monitoring --create-namespace
+
+# ── Prometheus ──────────────────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: "50GB"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          resources:
+            requests:
+              storage: 50Gi
+    # Scrape all pods with the prometheus.io/scrape annotation.
+    additionalScrapeConfigs:
+      - job_name: nutrihealth-services
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [ nutrihealth ]
+        relabel_configs:
+          - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_scrape ]
+            action: keep
+            regex: "true"
+          - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_path ]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [ __address__, __meta_kubernetes_pod_annotation_prometheus_io_port ]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [ __meta_kubernetes_pod_label_app_kubernetes_io_name ]
+            action: replace
+            target_label: service
+
+# ── Grafana ─────────────────────────────────────────────────────────────────
+grafana:
+  enabled: true
+  adminPassword: "${GRAFANA_ADMIN_PASSWORD}"
+  persistence:
+    enabled: true
+    size: 10Gi
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
+    auth.anonymous:
+      enabled: false
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: nutrihealth
+          orgId: 1
+          folder: NutriHealth AI
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/nutrihealth
+  dashboards:
+    nutrihealth:
+      # JVM metrics (Spring Boot Actuator / Micrometer)
+      jvm-overview:
+        gnetId: 4701        # official JVM Micrometer dashboard
+        revision: 1
+        datasource: Prometheus
+      # Kafka consumer lag
+      kafka-lag:
+        gnetId: 12483       # Kafka consumer group lag
+        revision: 1
+        datasource: Prometheus
+      # Spring Boot business metrics
+      spring-boot:
+        gnetId: 19004       # Spring Boot 3.x Actuator
+        revision: 1
+        datasource: Prometheus
+
+# ── AlertManager ────────────────────────────────────────────────────────────
+alertmanager:
+  config:
+    global:
+      slack_api_url: "${SLACK_WEBHOOK_URL}"
+    route:
+      receiver: nutrihealth-slack
+      group_by: [ alertname, service ]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+    receivers:
+      - name: nutrihealth-slack
+        slack_configs:
+          - channel: "#nutrihealth-alerts"
+            title: "NutriHealth AI Alert: {{ .CommonAnnotations.summary }}"
+            text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+            send_resolved: true
+      - name: pagerduty-critical
+        pagerduty_configs:
+          - service_key: "${PAGERDUTY_SERVICE_KEY}"
+    # Critical alerts (P1) page on-call via PagerDuty.
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: [ alertname, service ]
+
+# ── PrometheusRules — NutriHealth custom alerts ────────────────────────────
+additionalPrometheusRulesMap:
+  nutrihealth-rules:
+    groups:
+      - name: nutrihealth.service.health
+        rules:
+          - alert: ServiceDown
+            expr: up{job="nutrihealth-services"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.service }} is down"
+              description: "The NutriHealth microservice {{ $labels.service }} has been unreachable for 1 minute."
+
+          - alert: HighErrorRate
+            expr: |
+              rate(http_server_requests_seconds_count{status=~"5..",job="nutrihealth-services"}[5m])
+              /
+              rate(http_server_requests_seconds_count{job="nutrihealth-services"}[5m])
+              > 0.01
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High 5xx error rate on {{ $labels.service }}"
+              description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }}"
+
+          - alert: SlowP95Latency
+            expr: |
+              histogram_quantile(0.95,
+                rate(http_server_requests_seconds_bucket{job="nutrihealth-services"}[5m])
+              ) > 0.5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "P95 latency > 500ms on {{ $labels.service }}"
+              description: "95th percentile latency is {{ $value | humanizeDuration }} on {{ $labels.service }}"
+
+          - alert: KafkaConsumerLagHigh
+            expr: kafka_consumer_group_lag > 10000
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kafka consumer lag high on topic {{ $labels.topic }}"
+              description: "Consumer group {{ $labels.consumergroup }} lag is {{ $value }} on topic {{ $labels.topic }}"
+
+          - alert: JvmHeapUsageHigh
+            expr: |
+              jvm_memory_used_bytes{area="heap",job="nutrihealth-services"}
+              /
+              jvm_memory_max_bytes{area="heap",job="nutrihealth-services"}
+              > 0.85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "JVM heap > 85% on {{ $labels.service }}"
+              description: "JVM heap usage is {{ $value | humanizePercentage }} on {{ $labels.service }}"

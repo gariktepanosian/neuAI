@@ -1,0 +1,84 @@
+# Default values for nutrihealth-service.
+# Override in per-service values files (e.g. values-user-auth-service.yaml).
+
+# ── Image ──────────────────────────────────────────────────────────────────
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# ── Deployment ─────────────────────────────────────────────────────────────
+replicaCount: 2          # minimum replicas; HPA scales from this baseline
+
+service:
+  type: ClusterIP
+  port: 8080             # Kubernetes service port
+  targetPort: 8080       # Container port
+
+containerPort: 8080
+
+# ── Health checks ──────────────────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: containerPort
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: containerPort
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 3
+
+# ── Resources ──────────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+# ── HPA ────────────────────────────────────────────────────────────────────
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ── Canary deployment ──────────────────────────────────────────────────────
+canary:
+  enabled: false
+  weight: 20             # % of traffic routed to canary
+
+# ── Service Account / Workload Identity ───────────────────────────────────
+serviceAccount:
+  create: true
+  # GCP service account email for Workload Identity Federation.
+  # Set to "" to skip the annotation.
+  gcpServiceAccountEmail: ""
+
+# ── Environment variables ──────────────────────────────────────────────────
+# Injected as env vars into the container. Secret values should reference
+# Kubernetes Secrets (populated from GCP Secret Manager via External Secrets Operator).
+env: {}
+  # SPRING_PROFILES_ACTIVE: prod
+  # KAFKA_BOOTSTRAP_SERVERS: nutrihealth-kafka-kafka-bootstrap.kafka:9092
+
+# ── Extra volumes / volume mounts (e.g. for Secret files) ─────────────────
+extraVolumes: []
+extraVolumeMounts: []
+
+# ── Pod annotations ────────────────────────────────────────────────────────
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/actuator/prometheus"
+  prometheus.io/port: "8080"
+
+# ── Namespace ──────────────────────────────────────────────────────────────
+namespace: nutrihealth

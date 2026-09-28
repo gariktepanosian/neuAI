@@ -1,0 +1,92 @@
+name: CD — Deploy to GKE
+
+on:
+  workflow_run:
+    workflows: [ "CI — Build, Test, Security Scan & Image Sign" ]
+    types: [ completed ]
+    branches: [ "main" ]
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_REPO: nutrihealth
+  GKE_CLUSTER: nutrihealth-dev
+  GKE_REGION: us-central1
+
+jobs:
+  deploy:
+    name: Deploy — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      id-token: write
+
+    strategy:
+      max-parallel: 1   # sequential deploys to avoid GKE thrashing
+      matrix:
+        service:
+          - user-auth-service
+          - clinic-diagnostic-service
+          - subscription-order-service
+          - ai-nutrition-engine-service
+          - logistics-dispatch-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_CI_SERVICE_ACCOUNT }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.15.0"
+
+      - name: Set image tag
+        id: tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | head -c 8)
+          echo "TAG=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Helm upgrade (canary 20%)
+        run: |
+          helm upgrade --install ${{ matrix.service }} \
+            infra/helm/${{ matrix.service }} \
+            --namespace nutrihealth \
+            --create-namespace \
+            --set image.tag=${{ steps.tag.outputs.TAG }} \
+            --set image.repository=${REGISTRY}/${PROJECT_ID}/${GAR_REPO}/${{ matrix.service }} \
+            --set canary.enabled=true \
+            --set canary.weight=20 \
+            --wait --timeout 5m
+
+      - name: Wait for canary health (2 min bake)
+        run: sleep 120
+
+      - name: Promote canary to 100%
+        run: |
+          helm upgrade ${{ matrix.service }} \
+            infra/helm/${{ matrix.service }} \
+            --namespace nutrihealth \
+            --set image.tag=${{ steps.tag.outputs.TAG }} \
+            --set image.repository=${REGISTRY}/${PROJECT_ID}/${GAR_REPO}/${{ matrix.service }} \
+            --set canary.enabled=false \
+            --wait --timeout 5m
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: "Deploy of ${{ matrix.service }} FAILED on ${{ github.sha }}"

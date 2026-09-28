@@ -3,6 +3,7 @@ package com.nutrihealth.auth.adapter.out.persistence;
 import com.nutrihealth.auth.domain.model.UserAccount;
 import com.nutrihealth.auth.domain.port.out.UserAccountRepositoryPort;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,6 +27,11 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
     @Override
     public Optional<UserAccount> findByEmail(String email) {
         return springDataRepository.findByEmail(email).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<UserAccount> findById(UUID id) {
+        return springDataRepository.findById(id).map(this::toDomain);
     }
 
     @Override

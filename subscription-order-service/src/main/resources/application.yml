@@ -9,6 +9,17 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Idempotent producer: exactly-once delivery within a single Kafka session.
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
 
 server:
   port: 8082
@@ -20,6 +31,10 @@ nutrihealth:
     # the registered webhook endpoint (spec Phase 1, Step 1.4).
     api-key: ${STRIPE_API_KEY:sk_test_placeholder}
     webhook-signing-secret: ${STRIPE_WEBHOOK_SIGNING_SECRET:whsec_test_placeholder}
+  kafka:
+    topic:
+      subscription-paid: ${KAFKA_TOPIC_SUBSCRIPTION_PAID:subscription.payment.paid}
+      subscription-failed: ${KAFKA_TOPIC_SUBSCRIPTION_FAILED:subscription.payment.failed}
 
 logging:
   level:

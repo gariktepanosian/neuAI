@@ -1,0 +1,16 @@
+nameOverride: subscription-order-service
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE_PROJECT/nutrihealth/subscription-order-service
+  tag: latest
+service:
+  port: 8082
+  targetPort: 8082
+containerPort: 8082
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 20
+serviceAccount:
+  gcpServiceAccountEmail: subscription-order-service-dev@REPLACE_PROJECT.iam.gserviceaccount.com
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  KAFKA_BOOTSTRAP_SERVERS: nutrihealth-kafka-kafka-bootstrap.kafka:9092
