@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: clinic-diagnostic-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/nutrition_db}
+
+server:
+  port: 8083
+
+nutrihealth:
+  phi:
+    # 32-byte AES-256 key, base64-encoded. Local/dev default ONLY — real
+    # deployments must inject this from GCP Secret Manager / Cloud KMS.
+    encryption-key: ${PHI_ENCRYPTION_KEY:dOnRCr+CsfStxHSxFJuBup7jPVD567X1VQG2k/qW10Q=}
+
+logging:
+  level:
+    com.nutrihealth.diagnostic: DEBUG
