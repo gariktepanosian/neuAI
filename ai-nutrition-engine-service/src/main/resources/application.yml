@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ai-nutrition-engine-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/nutrition_db}
+
+server:
+  port: 8084
+
+nutrihealth:
+  ai:
+    gemini-api-base-url: ${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com}
+    gemini-api-key: ${GEMINI_API_KEY:dev-placeholder-key}
+    gemini-model: ${GEMINI_MODEL:gemini-1.5-pro}
+
+logging:
+  level:
+    com.nutrihealth.nutrition: DEBUG

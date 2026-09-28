@@ -13,7 +13,7 @@ PostgreSQL, Kafka, GCP/GKE).
 | [clinic-diagnostic-service](clinic-diagnostic-service/README.md) | scaffolded | FHIR R4 + legacy HL7 v2 (ORU^R01) lab diagnostic ingestion, AES-256-GCM PHI field encryption |
 | [user-auth-service](user-auth-service/README.md) | scaffolded | OAuth2.0/JWT auth, RBAC, GCP Secret Manager key rotation |
 | [subscription-order-service](subscription-order-service/README.md) | scaffolded | Stripe billing/webhooks, subscription lifecycle, Kafka event publishing |
-| ai-nutrition-engine-service | planned | AI-driven recipe generation and macro/menu personalization from FHIR biomarkers |
+| [ai-nutrition-engine-service](ai-nutrition-engine-service/README.md) | scaffolded | AI-driven recipe generation and macro/menu personalization from FHIR biomarkers |
 | logistics-dispatch-service | planned | Redis geospatial courier dispatch and delivery window optimization |
 
 Each service is an independently deployable Spring Boot module following
