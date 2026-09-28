@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: user-auth-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/subscription_db}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8081
+
+nutrihealth:
+  auth:
+    # 32-byte HMAC key, base64-encoded. Local/dev default ONLY — real
+    # deployments must inject this from GCP Secret Manager with rotation.
+    jwt-signing-key: ${JWT_SIGNING_KEY:xSKuJFCmZXilduOalTP7j5UvvNwTctkBLlfxkpNfJr4=}
+    jwt-ttl-minutes: ${JWT_TTL_MINUTES:60}
+
+logging:
+  level:
+    com.nutrihealth.auth: DEBUG
